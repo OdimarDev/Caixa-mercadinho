@@ -49,8 +49,7 @@ class RelatorioApp(QWidget):
             'Relatório de Vendas do Dia',
             'Relatório de Vendas do Periodo',
             'Relatório de Itens de Venda',
-            'Relatório de Movimentações de Caixa',
-            'Relatório de Saldo'
+            'Relatório de Movimentações de Caixa'
         ])
         self.combo_tipo_relatorio.currentIndexChanged.connect(self.atualizar_ui_relatatorio)
         self.layout.addWidget(self.combo_tipo_relatorio)
@@ -98,12 +97,8 @@ class RelatorioApp(QWidget):
         # DataEdit
         self.date_edit = QDateEdit()
         self.date_edit.setCalendarPopup(True)
-        self.date_edit.setDate(QDate.currentDate())
+        # self.date_edit.setDate(QDate.currentDate())
         
-        # DataEdit
-        self.date_edit1 = QDateEdit()
-        self.date_edit1.setCalendarPopup(True)
-        self.date_edit1.setDate(QDate.currentDate())
         
         # DataEdit
         self.date_edit2 = QDateEdit()
@@ -112,7 +107,7 @@ class RelatorioApp(QWidget):
         
         if tipo_relatorio == 'Relatório de Vendas do Dia':
             self.caixa_layout.addWidget(QLabel('Selecione a data:'))
-            self.caixa_layout.addWidget(self.date_edit)
+            self.caixa_layout.addWidget(self.date_edit2)
         if tipo_relatorio == 'Relatório de Vendas do Periodo':
             self.caixa_layout.addWidget(QLabel('Selecione a data Inicial:'))
             self.caixa_layout.addWidget(self.date_edit)
@@ -124,7 +119,7 @@ class RelatorioApp(QWidget):
         tipo_relatorio = self.combo_tipo_relatorio.currentText()
         filtros = self.input_filtros.text()
         filtros_dict = self.parse_filtros(filtros)
-        print(self.date_edit.text(),'------------------------')
+        
 
         try:
             if tipo_relatorio == 'Relatório de Produtos':
@@ -144,11 +139,20 @@ class RelatorioApp(QWidget):
                 resultados = Relatorios.gerar_relatorio_vendas(**filtros_dict, data_inicial=data_in, data_final=data_fin)
             elif tipo_relatorio == 'Relatório de Itens de Venda':
                 resultados = Relatorios.gerar_relatorio_itens_venda(**filtros_dict)
+                resultados = Relatorios.visualizar_relatorio(resultados)
+                produtos = Relatorios.gerar_relatorio_produtos()
+                produtos = Relatorios.visualizar_relatorio(produtos)
+                # Realizando o merge para unir as tabelas baseadas no 'produto' e 'id'
+                resultados = pd.merge(resultados, produtos, left_on='produto', right_on='id')
+                # Remover as colunas desnecessárias ou duplicadas
+                colunas_para_remover = ['id_y', 'preco', 'disponivel']  # Colunas que você não quer exibir
+                resultados = resultados.drop(columns=[col for col in colunas_para_remover if col in resultados.columns])
+                
+                # Reorganizar a ordem das colunas conforme necessário
+                colunas_reordenadas = ['id_x', 'venda', 'produto', 'nome', 'codigo_barras', 'quantidade', 'valor_unitario']
+                resultados = resultados[[col for col in colunas_reordenadas if col in resultados.columns]]
             elif tipo_relatorio == 'Relatório de Movimentações de Caixa':
                 resultados = Relatorios.gerar_relatorio_movimentacoes(**filtros_dict)
-            elif tipo_relatorio == 'Relatório de Saldo':
-                resultados = Relatorios.gerar_relatorio_saldo()
-    
                 
             self.df = Relatorios.visualizar_relatorio(resultados)# Convertendo os resultados para um DataFrame
             # Verificar se as colunas 'disponivel' e 'cancelada' existem no DataFrame antes de tentar substituí-las
@@ -176,7 +180,9 @@ class RelatorioApp(QWidget):
             # Exibir uma mensagem mais amigável ao usuário
             erro_msg = f"A categoria '{tipo_relatorio}' não possui o atributo '{atributo_erro}'."
             self.mostrar_mensagem_erro(erro_msg)  # Método para exibir mensagem ao usuário
-
+        except ValueError as e:
+            erro_msg = f"Criterio não suportado."
+            self.mostrar_mensagem_erro(erro_msg) 
         
         
     def parse_filtros(self, filtros):

@@ -316,9 +316,13 @@ class Relatorios:
 
     @staticmethod
     def visualizar_relatorio(df):
-        df = pd.DataFrame(list(df.dicts()))  # Convertendo os resultados para um formato de lista de dicionários
+        if isinstance(df, pd.DataFrame):  # Verificar se df é um DataFrame usando isinstance
+            df = df
+        else:   
+            # Convertendo para DataFrame caso seja necessário
+            df = pd.DataFrame(list(df.dicts()))  # Convertendo os resultados para uma lista de dicionários
+
         """Exibe o relatório na tela. Pode ser substituído ou adaptado para diferentes bibliotecas de interface."""
-        #print(df)
         return df
         
 db.create_tables([Produto, Venda, ItemVenda, MovimentacaoCaixa])

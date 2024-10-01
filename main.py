@@ -10,7 +10,7 @@ from PyQt5.QtWidgets import (
 
 from decimal import Decimal
 
-from produto_ui import Produto, ProductView, DeleteProductForm
+from produto_ui import Produto, ProductView, MovimentoCaixa
 from entities import Produto, Venda
 from relatorios_ui import RelatorioApp
 
@@ -45,10 +45,10 @@ class MercadinhoApp(QMainWindow):
         self.edit_product_button.clicked.connect(self.show_products_view)
         self.button_layout.addWidget(self.edit_product_button)
 
-        self.delete_product_button = QPushButton('Excluir Produto')
-        self.delete_product_button.clicked.connect(
-            self.show_delete_product_form)
-        self.button_layout.addWidget(self.delete_product_button)
+        self.movimentacao_button = QPushButton('Movimentação de Caixa')
+        self.movimentacao_button.clicked.connect(
+            self.show_movimento_product_form)
+        self.button_layout.addWidget(self.movimentacao_button)
 
         self.register_sale_button = QPushButton('Registrar Venda')
         self.register_sale_button.clicked.connect(self.show_register_sale_form)
@@ -60,13 +60,13 @@ class MercadinhoApp(QMainWindow):
         # CRIE OS FORMULARIOS
         self.relatorios = RelatorioApp(self)
         self.products_view = ProductView(self)
-        self.delete_product_form = DeleteProductForm(self)
+        self.movimentacao_button = MovimentoCaixa(self)
         self.register_sale_form = SaleForm(self)
 
         # Add forms to stacked widget
         self.stacked_widget.addWidget(self.relatorios)
         self.stacked_widget.addWidget(self.products_view)
-        self.stacked_widget.addWidget(self.delete_product_form)
+        self.stacked_widget.addWidget(self.movimentacao_button)
         self.stacked_widget.addWidget(self.register_sale_form)
 
     def show_relatorios(self):
@@ -76,8 +76,8 @@ class MercadinhoApp(QMainWindow):
         # pass
         self.stacked_widget.setCurrentWidget(self.products_view)
 
-    def show_delete_product_form(self):
-        self.stacked_widget.setCurrentWidget(self.delete_product_form)
+    def show_movimento_product_form(self):
+        self.stacked_widget.setCurrentWidget(self.movimentacao_button)
 
     def show_register_sale_form(self):
         # Remover a instância antiga do SaleForm

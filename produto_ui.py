@@ -414,7 +414,7 @@ class ProductForm(QDialog):
     def show_error_message(self, message):
         QMessageBox.critical(self, 'Erro', message)
 
-class DeleteProductForm(QWidget):
+class MovimentoCaixa(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.initUI()
