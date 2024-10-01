@@ -1,0 +1,163 @@
+import sys
+from PyQt5.QtWidgets import (
+    QApplication, QWidget, QVBoxLayout, QFormLayout, QComboBox, QLineEdit, 
+    QPushButton, QTableView, QFileDialog, QLabel, QDateEdit, QHBoxLayout
+)
+from PyQt5.QtCore import QAbstractTableModel, Qt, QDate
+import pandas as pd
+from entities import Relatorios
+
+class DataFrameModel(QAbstractTableModel):
+    def __init__(self, dataframe, parent=None):
+        super().__init__(parent)
+        self._dataframe = dataframe
+
+    def rowCount(self, parent=None):
+        return len(self._dataframe)
+
+    def columnCount(self, parent=None):
+        return len(self._dataframe.columns)
+
+    def data(self, index, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            return str(self._dataframe.iloc[index.row(), index.column()])
+        return None
+
+    def headerData(self, section, orientation, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole:
+            if orientation == Qt.Horizontal:
+                return self._dataframe.columns[section]
+            else:
+                return str(section + 1)
+        return None
+
+
+class RelatorioApp(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        # Layout principal
+        self.layout = QVBoxLayout(self)
+
+        # Seleção do tipo de relatório
+        self.layout.addWidget(QLabel('Tipo de Relatório:'))
+        self.combo_tipo_relatorio = QComboBox()
+        self.combo_tipo_relatorio.addItems([
+            'Relatório de Produtos', 
+            'Relatório de Vendas', 
+            'Relatório de Itens de Venda',
+            'Relatório de Movimentações de Caixa', 
+            'Relatório de Saldo'
+        ])
+        self.combo_tipo_relatorio.currentIndexChanged.connect(self.atualizar_ui_relatatorio)
+        self.layout.addWidget(self.combo_tipo_relatorio)
+
+        # Layout para os filtros
+        self.form_layout = QFormLayout()
+        self.layout.addLayout(self.form_layout)
+
+        # Campo de filtros
+        self.input_filtros = QLineEdit()
+        self.input_filtros.setPlaceholderText('Digite os filtros aqui (ex: nome=produto)')
+        self.form_layout.addRow(QLabel('Filtros:'), self.input_filtros)
+
+        # Campo de seleção de data
+        self.date_edit = QDateEdit()
+        self.date_edit.setCalendarPopup(True)
+        self.date_edit.setDate(QDate.currentDate())
+        self.form_layout.addRow(QLabel('Data:'), self.date_edit)
+
+        # Botão de gerar relatório
+        self.button_gerar = QPushButton('Gerar Relatório')
+        self.button_gerar.clicked.connect(self.gerar_relatorio)
+        self.layout.addWidget(self.button_gerar)
+
+        # Tabela para exibir o relatório gerado
+        self.table_view = QTableView()
+        self.layout.addWidget(self.table_view)
+
+        # Botão para exportar o relatório
+        self.button_exportar = QPushButton('Exportar para CSV')
+        self.button_exportar.clicked.connect(self.exportar_csv)
+        self.layout.addWidget(self.button_exportar)
+
+        # Oculta os widgets de data inicialmente
+        self.date_edit.hide()
+
+        # Armazena o DataFrame gerado
+        self.df = pd.DataFrame()
+
+    def atualizar_ui_relatatorio(self):
+        # Atualiza a interface com base no tipo de relatório escolhido
+        tipo_relatorio = self.combo_tipo_relatorio.currentText()
+
+        # Limpar campo de filtros
+        self.input_filtros.clear()
+
+        # Ocultar ou mostrar campos conforme o relatório
+        if tipo_relatorio == 'Relatório de Vendas' or tipo_relatorio == 'Relatório de Movimentações de Caixa':
+            self.date_edit.show()
+        else:
+            self.date_edit.hide()
+
+    def gerar_relatorio(self):
+        # Gerar o relatório com base no tipo escolhido e nos filtros aplicados
+        tipo_relatorio = self.combo_tipo_relatorio.currentText()
+        filtros = self.input_filtros.text()
+        filtros_dict = self.parse_filtros(filtros)
+
+        # Log para depuração
+        print(f'Gerando {tipo_relatorio} com filtros:', filtros_dict)
+
+        # Gera o relatório de acordo com o tipo selecionado
+        try:
+            if tipo_relatorio == 'Relatório de Produtos':
+                resultados = Relatorios.gerar_relatorio_produtos(**filtros_dict)
+            elif tipo_relatorio == 'Relatório de Vendas':
+                filtros_dict['data'] = self.date_edit.date().toString('yyyy-MM-dd')
+                resultados = Relatorios.gerar_relatorio_vendas(**filtros_dict)
+            elif tipo_relatorio == 'Relatório de Itens de Venda':
+                resultados = Relatorios.gerar_relatorio_itens_venda(**filtros_dict)
+            elif tipo_relatorio == 'Relatório de Movimentações de Caixa':
+                filtros_dict['data'] = self.date_edit.date().toString('yyyy-MM-dd')
+                resultados = Relatorios.gerar_relatorio_movimentacoes(**filtros_dict)
+            elif tipo_relatorio == 'Relatório de Saldo':
+                resultados = Relatorios.gerar_relatorio_saldo()
+
+            # Exibe o DataFrame no QTableView
+            self.df = Relatorios.visualizar_relatorio(resultados)
+            self.table_view.setModel(DataFrameModel(self.df))
+
+        except Exception as e:
+            print(f"Erro ao gerar o relatório: {str(e)}")
+
+    def parse_filtros(self, filtros):
+        # Converte a string de filtros em um dicionário
+        filtros_dict = {}
+        for filtro in filtros.split(';'):
+            if '=' in filtro:
+                chave, valor = filtro.split('=', 1)
+                filtros_dict[chave.strip()] = valor.strip()
+        return filtros_dict
+
+    def exportar_csv(self):
+        # Exportar o relatório gerado para CSV
+        if self.df.empty:
+            print("Nenhum relatório gerado para exportar.")
+            return
+
+        options = QFileDialog.Options()
+        file_name, _ = QFileDialog.getSaveFileName(
+            self, "Salvar Relatório", "", "CSV Files (*.csv);;All Files (*)", options=options)
+        if file_name:
+            self.df.to_csv(file_name, index=False)
+            print(f"Relatório exportado para {file_name}")
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = RelatorioApp()
+    window.show()
+    sys.exit(app.exec_())
