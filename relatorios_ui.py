@@ -128,7 +128,7 @@ class RelatorioApp(QWidget):
                 if 'data' in filtros_dict:
                     del filtros_dict['data']
                 # Obter e imprimir a data selecionada no widget date_edit
-                data_selecionada = self.date_edit.date().toString('yyyy-MM-dd')
+                data_selecionada = self.date_edit2.date().toString('yyyy-MM-dd')
                 resultados = Relatorios.gerar_relatorio_vendas(**filtros_dict, data=data_selecionada )
             elif tipo_relatorio == 'Relatório de Vendas do Periodo':
                 if 'data' in filtros_dict:

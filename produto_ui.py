@@ -6,9 +6,9 @@ from PyQt5.QtCore import QAbstractTableModel, QVariant, Qt, QSortFilterProxyMode
 from PyQt5.QtWidgets import (
     QVBoxLayout, QHBoxLayout, QWidget,
     QPushButton, QLabel, QLineEdit, QMessageBox, QHeaderView, QTableView,
-    QDialog, QCheckBox
+    QDialog, QCheckBox, QComboBox, QSpacerItem, QSizePolicy
 )
-from entities import  Produto, Relatorios
+from entities import  Produto, Relatorios, MovimentacaoCaixa
 from decimal import Decimal
 
 class ProductFilterProxyModel(QSortFilterProxyModel):
@@ -414,27 +414,94 @@ class ProductForm(QDialog):
     def show_error_message(self, message):
         QMessageBox.critical(self, 'Erro', message)
 
+
+
 class MovimentoCaixa(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.initUI()
 
     def initUI(self):
-        self.setLayout(QVBoxLayout())
+        self.layout = QVBoxLayout(self)
+        
+        # Layout principal
+        self.layout.addWidget(QLabel('Tipo de Movimentação:'))
 
-        self.id_label = QLabel('ID do Produto para Exclusão:')
-        self.layout().addWidget(self.id_label)
-        self.id_input = QLineEdit(self)
-        self.layout().addWidget(self.id_input)
+        # ComboBox para seleção de tipo de movimentação
+        self.combo_tipo_movimento = QComboBox()
+        self.combo_tipo_movimento.addItems([
+            'Entrada',
+            'Saída'
+        ])
+        self.layout.addWidget(self.combo_tipo_movimento)
 
-        self.delete_button = QPushButton('Excluir Produto')
-        self.delete_button.clicked.connect(self.delete_product)
-        self.layout().addWidget(self.delete_button)
+        # Layout para valor e descrição
+        self.caixa_layout = QHBoxLayout()
+        self.layout.addLayout(self.caixa_layout)
 
-    def delete_product(self):
-        try:
-            id = int(self.id_input.text())
-            Produto.excluir_produto(id=id)
-            self.parent().load_products()
-        except Exception as e:
-            self.parent().show_error_message(f"Erro ao excluir produto: {str(e)}")
+        # Campo de valor
+        self.input_valor = QLineEdit()
+        self.caixa_layout.addWidget(QLabel('Valor:'))
+        self.caixa_layout.addWidget(self.input_valor)
+
+        # Validador para o campo de valor (somente números)
+        self.price_validator = QDoubleValidator(0.0, 1e6, 2, self)
+        self.price_validator.setNotation(QDoubleValidator.StandardNotation)
+        self.input_valor.setValidator(self.price_validator)
+
+        # Campo de descrição
+        self.input_descricao = QLineEdit()
+        self.input_descricao.setPlaceholderText('Digite a descrição da movimentação aqui (ex: Pagamento de fornecedor)')
+        self.layout.addWidget(QLabel('Descrição:'))
+        self.layout.addWidget(self.input_descricao)
+
+        # Botão para movimentar valores
+        self.button_gerar = QPushButton('Movimentar Valores')
+        self.button_gerar.clicked.connect(self.movimentar)
+        self.layout.addWidget(self.button_gerar)
+
+        # Adiciona um spacer flexível para "empurrar" os itens para cima
+        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        self.layout.addItem(spacer)
+
+    def movimentar(self):
+        tipo_movimento = self.combo_tipo_movimento.currentText()
+        valor = self.input_valor.text().replace(',','.')
+        descricao = self.input_descricao.text().capitalize()
+        if descricao == '':
+            descricao = None
+        # Validação dos campos
+        if not valor or float(valor) <= 0:
+            self.mostrar_mensagem_erro("Por favor, insira um valor válido para a movimentação.")
+            return
+        # if not descricao:
+        #     self.mostrar_mensagem_erro("Por favor, insira uma descrição para a movimentação.")
+        #     return
+
+
+      # Lógica para processar o movimento no banco de dados ou sistema
+        movimento_args = {'valor': valor}  # Base da chamada de função
+
+        if descricao:
+            movimento_args['descricao'] = descricao  # Adiciona a descrição somente se não for None
+
+        if tipo_movimento == 'Entrada':
+            MovimentacaoCaixa.registrar_entrada(**movimento_args)
+            print('Entrada registrada')
+        elif tipo_movimento == 'Saída':
+            MovimentacaoCaixa.registrar_saida(**movimento_args)
+            print('Saída registrada')
+        else:
+            print('ERRO!!!!!!!')
+            
+        # Resetar os campos após a movimentação
+        self.input_valor.clear()
+        self.input_descricao.clear()
+
+    def mostrar_mensagem_erro(self, mensagem):
+        """Exibe uma mensagem de erro em uma MessageBox."""
+        msg_box = QMessageBox()
+        msg_box.setIcon(QMessageBox.Critical)
+        msg_box.setText(mensagem)
+        msg_box.setWindowTitle("Erro")
+        msg_box.exec_()

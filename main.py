@@ -1,19 +1,74 @@
 # main.py
 import sys
-from PyQt5.QtGui import QDoubleValidator
+from PyQt5.QtGui import QDoubleValidator, QIcon
 from PyQt5.QtCore import QStringListModel, QDateTime, Qt
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, QWidget,
     QPushButton, QLabel, QLineEdit, QTableWidget, QTableWidgetItem,
-    QMessageBox, QStackedWidget, QInputDialog, QCompleter, QHeaderView
+    QMessageBox, QStackedWidget, QInputDialog, QCompleter, QHeaderView, QSpacerItem, QSizePolicy
 )
 
 from decimal import Decimal
 
 from produto_ui import Produto, ProductView, MovimentoCaixa
-from entities import Produto, Venda
+from entities import Produto, Venda, MovimentacaoCaixa, Relatorios
 from relatorios_ui import RelatorioApp
 
+class TelaInicial(QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.initUI()
+
+    def initUI(self):
+        layout = QVBoxLayout(self)
+        self.setWindowTitle("Tela Inicial")
+        # Definindo o ícone da janela
+        self.setWindowIcon(QIcon("./icon.png"))
+
+        # Nome da Mercearia
+        nome_mercearia_label = QLabel('Mercearia e Lanchonete Santa Rita')
+        nome_mercearia_label.setStyleSheet('font-size: 24px; font-weight: bold; color: red')
+        nome_mercearia_label.setAlignment(Qt.AlignCenter)  # Centraliza o texto
+        layout.addWidget(nome_mercearia_label)
+
+        # Valor em Caixa
+        valor_em_caixa = MovimentacaoCaixa.calcular_saldo()  # Obtendo o valor em caixa
+        valor_caixa_label = QLabel(f'<span style="color: black;">Valor em Caixa: </span><span style="color: green;">R$ {valor_em_caixa:.2f}</span>')  
+        valor_caixa_label.setStyleSheet('font-size: 20px; color: green;')
+        valor_caixa_label.setAlignment(Qt.AlignCenter)  # Centraliza o texto
+        layout.addWidget(valor_caixa_label)
+
+        # Título da Tela Inicial
+        title_label = QLabel('Bem-vindo ao Sistema de Caixa do Mercadinho!')
+        title_label.setStyleSheet('font-size: 24px; font-weight: bold;')
+        title_label.setAlignment(Qt.AlignCenter)  # Centraliza o texto
+        layout.addWidget(title_label)
+
+        # Descrição
+        description_label = QLabel('Gerencie suas vendas de forma eficiente.')
+        description_label.setStyleSheet('font-size: 16px;')
+        description_label.setAlignment(Qt.AlignCenter)  # Centraliza o texto
+        layout.addWidget(description_label)
+
+        # Botão para iniciar o sistema
+        start_button = QPushButton('Iniciar Sistema')
+        start_button.clicked.connect(self.start_system)
+        layout.addWidget(start_button)
+
+        # Adicionando espaçamento entre os widgets
+        layout.setSpacing(20)  # Espaçamento de 20 pixels entre os widgets
+
+        # Adicionando um espaçador para melhorar o layout
+        spacer = QSpacerItem(20, 40, QSizePolicy.Minimum, QSizePolicy.Expanding)
+        layout.addItem(spacer)
+
+        # Centraliza o layout
+        layout.setAlignment(Qt.AlignCenter)
+
+    def start_system(self):
+        self.main_window = MercadinhoApp()  # Instanciar a classe principal
+        self.main_window.show()  # Mostrar a janela principal
+        self.close()  # Fechar a tela inicial
 
 class MercadinhoApp(QMainWindow):
 
@@ -28,6 +83,8 @@ class MercadinhoApp(QMainWindow):
         self.setGeometry(100, 200, 800, 600)
         self.showFullScreen()   # Janela maximizada
 
+        self.setWindowIcon(QIcon("./icon.png")) 
+        
         self.central_widget = QWidget()
         self.setCentralWidget(self.central_widget)
 
@@ -92,7 +149,12 @@ class MercadinhoApp(QMainWindow):
     def show_error_message(self, message):
         QMessageBox.critical(self, 'Erro', message)
 
-
+    def closeEvent(self, event):
+        """Override close event to show the initial screen again."""
+        self.initial_screen = TelaInicial()
+        self.initial_screen.show()  # Show the initial screen
+        event.accept()  # Accept the close event
+        
 class SaleForm(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -385,8 +447,14 @@ class SaleForm(QWidget):
         QMessageBox.critical(self, 'Erro', message)
 
 
+
+    
 if __name__ == '__main__':
     app = QApplication(sys.argv)
-    ex = MercadinhoApp()
-    ex.showMaximized()
+    # Criar e mostrar a tela inicial
+    tela_inicial = TelaInicial()
+    
+    tela_inicial.setGeometry(100, 100, 400, 300)  # Ajuste a geometria conforme necessário
+    tela_inicial.show()
+
     sys.exit(app.exec_())
